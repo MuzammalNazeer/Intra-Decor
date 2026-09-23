@@ -1,0 +1,11 @@
+{
+  "name": "intradecor-fullstack",
+  "version": "1.0.0",
+  "description": "Intra Decor - Modern React + Tailwind & Node.js/Express Fullstack Platform",
+  "private": true,
+  "scripts": {
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "install:all": "npm --prefix server install && npm --prefix client install"
+  }
+}

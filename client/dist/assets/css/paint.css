@@ -1,0 +1,67 @@
+
+body {
+    font-family: Arial, sans-serif;
+}
+.header-image{
+    position: relative;
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+}
+
+/* Header image height fix */
+.header-image img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.header-image .overlay{
+    background: linear-gradient(
+        rgba(0,0,0,0.6),
+        rgba(0,0,0,0.3)
+    );
+}
+.header-image .content{
+    position: absolute;
+    top: 15%;
+    left: 5%;
+    color: white;
+}
+.header-image h1{
+    display: flex;
+    justify-content: center;
+    font-weight: 500px;
+}
+.header-image p{
+    font-size: 25px;
+    font-weight: bold;
+}
+
+/* Center paint buttons */
+.colour-box{
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.colour-box button {
+    padding: 10px 15px;
+    cursor: pointer;
+}
+
+/* Shades */
+#shades{
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.shade-box {
+    width: 40px;
+    height: 40px;
+    margin: 5px;
+    cursor: pointer;
+    border: 1px solid #333;
+}

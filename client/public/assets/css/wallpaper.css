@@ -1,0 +1,92 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+h1, h2 {
+    text-align: center;
+}
+
+.wallpaper-category {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.wallpaper-card {
+    width: 30%;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.wallpaper-card:hover{
+    transform: translateY(-10px);/*card  thora upr*/
+    
+}
+
+.wallpaper-card button {
+    background: #4b2c2c;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 25px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.3s, transform 0.2s;
+    letter-spacing: 0.5px;
+    margin-top: 10px;
+}
+.wallpaper-card button:hover {
+    background: #7a4040;
+    transform: scale(1.05);
+}
+
+.wallpaper-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 5px;
+    transition: all 0.3s ease; 
+}
+.wallpaper-card:hover img{
+    transform: scale(1.05);/* image zoom*/
+}
+
+.wallpapwe-styles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.wallpaper-styles .wallpaper-card {
+    width: 150px;
+    padding: 5px;
+}
+/*reponsive*/
+/* Desktop – default */
+.wallpaper-card {
+    width: 30%;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+    .wallpaper-card {
+        width: 48%;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .wallpaper-card {
+        width: 100%;
+    }
+}
