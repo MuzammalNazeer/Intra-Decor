@@ -2,11 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { ShoppingBag, Eye, Star, Heart } from 'lucide-react';
+import { ShoppingBag, Eye, Star, Heart, Check } from 'lucide-react';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const [justAdded, setJustAdded] = React.useState(false);
   const isFav = isInWishlist(product.id);
   const price = Number(product.price) || 0;
   const discount = Number(product.discount) || 0;
@@ -23,6 +24,8 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
     addToCart(product, 1);
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1800);
   };
 
   const handleToggleWishlist = (e) => {
@@ -115,11 +118,15 @@ export default function ProductCard({ product }) {
 
           <button
             onClick={handleQuickAdd}
-            className="flex items-center gap-1.5 bg-[#4b2c2c] hover:bg-[#6b3c3c] text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shadow-xs active:scale-95"
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-all shadow-xs active:scale-95 ${
+              justAdded
+                ? 'bg-emerald-700 text-white ring-2 ring-emerald-300'
+                : 'bg-[#4b2c2c] hover:bg-[#6b3c3c] text-white'
+            }`}
             title="Add to Cart"
           >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Add</span>
+            {justAdded ? <Check className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{justAdded ? 'Added!' : 'Add'}</span>
           </button>
         </div>
       </div>

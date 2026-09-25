@@ -84,7 +84,7 @@ export default function Dashboard() {
         .finally(() => setLoading(false));
     } else {
       Promise.all([
-        fetch(`/api/orders/user/${user?.id}`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+        fetch('/api/orders/my', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
         fetch(`/api/bookings/user/${user?.id}`).then(r => r.json()),
         fetch(`/api/favorites/${user?.id}`).then(r => r.json())
       ])

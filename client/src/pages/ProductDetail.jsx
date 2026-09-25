@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 import { ShoppingBag, Star, ShieldCheck, Truck, RotateCcw, Check, Plus, Minus, ArrowLeft, Heart, MessageSquare, ThumbsUp, Send } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user, token } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const isFav = isInWishlist(id);
 
@@ -20,42 +23,53 @@ export default function ProductDetail() {
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
-  const [newReview, setNewReview] = useState({ userName: '', rating: 5, comment: '' });
+  const [newReview, setNewReview] = useState({ userName: user?.name || '', rating: 5, comment: '' });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  useEffect(() => {
+    if (user?.name) {
+      setNewReview(prev => ({ ...prev, userName: prev.userName || user.name }));
+    }
+  }, [user]);
 
   useEffect(() => {
     setLoading(true);
     setQuantity(1);
     fetch(`/api/products/${id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setProduct(data.data);
-          if (data.data.colors && data.data.colors.length > 0) {
-            setSelectedColor(data.data.colors[0]);
-          }
-          // Fetch related
-          fetch(`/api/products?category=${encodeURIComponent(data.data.category)}`)
-            .then(r => r.json())
-            .then(relData => {
-              if (relData.success) {
-                setRelated(relData.data.filter(p => p.id !== id).slice(0, 4));
-              }
-            });
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          navigate('/tiles', { replace: true });
+          return;
         }
+
+        setProduct(data.data);
+        if (data.data.colors && data.data.colors.length > 0) {
+          setSelectedColor(data.data.colors[0]);
+        }
+
+        fetch(`/api/products?category=${encodeURIComponent(data.data.category)}`)
+          .then(r => r.json())
+          .then(relData => {
+            if (relData.success) {
+              setRelated(relData.data.filter(p => p.id !== id).slice(0, 4));
+            }
+          });
       })
-      .catch(err => console.error(err))
+      .catch(err => {
+        console.error(err);
+        navigate('/tiles', { replace: true });
+      })
       .finally(() => setLoading(false));
 
-    // Fetch reviews
     fetch(`/api/products/${id}/reviews`)
       .then(res => res.json())
       .then(data => {
         if (data.success) setReviews(data.data);
       })
       .catch(() => {});
-  }, [id]);
+  }, [id, navigate]);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -64,13 +78,16 @@ export default function ProductDetail() {
     try {
       const res = await fetch(`/api/products/${id}/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(newReview)
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.data) {
         setReviews(prev => [data.data, ...prev]);
-        setNewReview({ userName: '', rating: 5, comment: '' });
+        setNewReview({ userName: user?.name || '', rating: 5, comment: '' });
         setReviewSuccess(true);
         setTimeout(() => setReviewSuccess(false), 3500);
       }

@@ -45,7 +45,7 @@ export default function Footer() {
               <a href="#" className="w-9 h-9 rounded-full bg-[#3e2424] flex items-center justify-center hover:bg-[#d4a56a] hover:text-[#2c1a1a] transition-all">
                 <i className="fa-brands fa-instagram"></i>
               </a>
-              <a href="#" className="w-9 h-9 rounded-full bg-[#3e2424] flex items-center justify-center hover:bg-[#d4a56a] hover:text-[#2c1a1a] transition-all">
+              <a href="https://wa.me/923479814741" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-[#3e2424] flex items-center justify-center hover:bg-[#d4a56a] hover:text-[#2c1a1a] transition-all">
                 <i className="fa-brands fa-whatsapp"></i>
               </a>
               <a href="#" className="w-9 h-9 rounded-full bg-[#3e2424] flex items-center justify-center hover:bg-[#d4a56a] hover:text-[#2c1a1a] transition-all">
@@ -135,15 +135,15 @@ export default function Footer() {
             <div className="space-y-3 text-sm text-gray-300 mb-5">
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#d4a56a] flex-shrink-0 mt-1" />
-                <span>Gulberg III & DHA Phase 5, Lahore, Pakistan</span>
+                <span>Johar Town, Lahore, Pakistan</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#d4a56a] flex-shrink-0" />
-                <span>+92 300 1234567 / +92 42 35789123</span>
+                <a href="tel:03479814741" className="hover:text-[#d4a56a] transition-colors">03479814741</a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#d4a56a] flex-shrink-0" />
-                <span>support@intradecorhome.com</span>
+                <a href="mailto:info.muzseo@gmail.com" className="hover:text-[#d4a56a] transition-colors">info.muzseo@gmail.com</a>
               </div>
             </div>
 

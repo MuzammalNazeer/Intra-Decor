@@ -5,6 +5,10 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const clientPublicPath = path.resolve(__dirname, '../client/public');
+
 // Database connection (auto-connects on import)
 import './config/db.js';
 
@@ -13,11 +17,10 @@ import authRouter     from './routes/auth.js';
 import productsRouter from './routes/products.js';
 import cartRouter     from './routes/cart.js';
 import ordersRouter   from './routes/orders.js';
+import paymentsRouter from './routes/payments.js';
 import adminRouter    from './routes/admin.js';
 import generalRouter  from './routes/general.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+import aiRouter       from './routes/ai.js';
 
 const app  = express();
 const PORT = process.env.PORT || 5050;
@@ -25,10 +28,12 @@ const PORT = process.env.PORT || 5050;
 // ─── CORS ───────────────────────────────────────────────
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
+    process.env.FRONTEND_URL || 'http://localhost:4173',
+    'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:5180',
+    'http://localhost:4173',
     'http://localhost:3000',
   ],
   credentials: true,
@@ -40,18 +45,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── STATIC FILES ──────────────────────────────────────
-// Serve images and uploads from the original htdocs folder
-const htdocsPath = path.resolve(__dirname, '../../htdocs');
-app.use('/assets/images', express.static(path.join(htdocsPath, 'assets', 'images')));
-app.use('/assets/css',    express.static(path.join(htdocsPath, 'assets', 'css')));
-app.use('/uploads',       express.static(path.join(htdocsPath, 'uploads')));
+// Serve assets from the local frontend public folder so images/icons load correctly
+app.use('/assets/images', express.static(path.join(clientPublicPath, 'assets', 'images')));
+app.use('/assets/css',    express.static(path.join(clientPublicPath, 'assets', 'css')));
+app.use('/assets',        express.static(path.join(clientPublicPath, 'assets')));
+app.use('/uploads',       express.static(path.join(clientPublicPath, 'uploads')));
 
 // ─── API ROUTES ─────────────────────────────────────────
 app.use('/api/auth',     authRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/cart',     cartRouter);
 app.use('/api/orders',   ordersRouter);
+app.use('/api/payments', paymentsRouter);
 app.use('/api/admin',    adminRouter);
+app.use('/api/ai',       aiRouter);
 app.use('/api',          generalRouter);  // general: services, contact, newsletter, favorites
 
 // ─── HEALTH CHECK ───────────────────────────────────────

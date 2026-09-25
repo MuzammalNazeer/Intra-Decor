@@ -25,6 +25,29 @@ export const authenticateToken = (req, res, next) => {
 };
 
 /**
+ * Middleware: Optional JWT authentication (populates req.user if valid token present, allows guest otherwise)
+ */
+export const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (!err && user) {
+      req.user = user;
+    } else {
+      req.user = null;
+    }
+    next();
+  });
+};
+
+
+/**
  * Middleware: Require admin role
  */
 export const requireAdmin = (req, res, next) => {

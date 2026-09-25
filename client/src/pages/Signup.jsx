@@ -105,7 +105,7 @@ export default function Signup() {
             <div className="relative">
               <input
                 type="tel"
-                placeholder="e.g. 0300 1234567"
+                placeholder="e.g. 0347 9814741"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 className="w-full bg-[#faf8f5] text-xs py-3 pl-10 pr-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#4b2c2c]"

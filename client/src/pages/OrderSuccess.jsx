@@ -50,9 +50,18 @@ export default function OrderSuccess() {
               <span>Delivery Address:</span>
               <span className="text-gray-900">{order.address}, {order.city}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span>Payment Mode:</span>
-              <strong className="text-gray-900">{order.paymentMethod}</strong>
+              <div className="flex items-center gap-1.5">
+                <strong className="text-gray-900">{order.paymentMethod}</strong>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  order.paymentMethod?.toLowerCase().includes('safe')
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {order.paymentMethod?.toLowerCase().includes('safe') ? 'Paid Online' : 'Pay on Delivery'}
+                </span>
+              </div>
             </div>
             <div className="flex justify-between pt-2 border-t border-gray-200 text-sm font-bold text-[#4b2c2c]">
               <span>Total Paid / Payable:</span>
@@ -64,7 +73,7 @@ export default function OrderSuccess() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            to={`/track-order?query=${encodeURIComponent(order.id)}`}
+            to={`/track-order?query=${encodeURIComponent(order.trackingNumber || order.id)}`}
             className="w-full sm:w-auto bg-[#4b2c2c] hover:bg-[#3a2020] text-white px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
           >
             <Truck className="w-4 h-4 text-[#d4a56a]" />

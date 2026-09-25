@@ -215,11 +215,28 @@ router.post('/login', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email.toLowerCase().trim()]);
     if (rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      // Fallback: Check admins table
+      const [adminRows] = await pool.query('SELECT * FROM admins WHERE email = ?', [email.toLowerCase().trim()]);
+      if (adminRows.length === 0) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const admin = adminRows[0];
+      const isMatch = (password === admin.password) || (await bcrypt.compare(password, admin.password).catch(() => false));
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const token = generateToken({ id: admin.id, email: admin.email, role: 'admin', name: admin.name || 'Admin' });
+      return res.json({
+        success: true,
+        token,
+        user: { id: admin.id, name: admin.name || 'Admin', email: admin.email, role: 'admin' }
+      });
     }
 
     const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password).catch(() => false) || (password === user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }

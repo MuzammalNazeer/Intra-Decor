@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Truck, CreditCard, Banknote, Lock, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Truck, CreditCard, Banknote, Lock, ArrowRight, ShoppingBag } from 'lucide-react';
 
 export default function Checkout() {
   const { cartItems, subtotal, shipping, grandTotal, clearCart } = useCart();
@@ -15,7 +15,7 @@ export default function Checkout() {
     phone: user?.phone || '',
     address: user?.address || '',
     city: user?.city || 'Lahore',
-    paymentMethod: 'Cash on Delivery',
+    paymentMethod: 'Safepay',
     notes: ''
   });
 
@@ -23,8 +23,36 @@ export default function Checkout() {
   const [error, setError] = useState('');
 
   if (cartItems.length === 0) {
-    navigate('/cart');
-    return null;
+    return (
+      <div className="min-h-screen bg-[#f7f4f0] py-20 px-4">
+        <div className="max-w-md mx-auto bg-white rounded-3xl p-10 text-center border border-brand-border shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-[#faf0ea] text-[#4b2c2c] flex items-center justify-center mx-auto mb-4">
+            <ShoppingBag className="w-8 h-8" />
+          </div>
+          <h2 className="font-serif text-2xl font-bold text-[#4b2c2c] mb-2">
+            Your Cart is Empty
+          </h2>
+          <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+            There are currently no items in your cart to checkout. Please add products from the store first.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              to="/tiles"
+              className="inline-flex items-center justify-center gap-2 bg-[#4b2c2c] hover:bg-[#3a2020] text-white px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-colors shadow-md"
+            >
+              <span>Explore Tiles</span>
+              <ArrowRight className="w-4 h-4 text-[#d4a56a]" />
+            </Link>
+            <Link
+              to="/wallpaper"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-colors"
+            >
+              <span>Wallpapers</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleSubmit = async (e) => {
@@ -33,40 +61,87 @@ export default function Checkout() {
     setError('');
 
     try {
+      const token = localStorage.getItem('intradecor_token');
+
+      if (formData.paymentMethod === 'Safepay') {
+        const payload = {
+          name: formData.customerName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          items: cartItems,
+          grandTotal: grandTotal,
+          subtotal: subtotal,
+          shipping: shipping,
+        };
+
+        const res = await fetch('/api/payments/safepay/create-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create Safepay session');
+
+        const tracker = data.data?.tracker || data.tracker;
+        if (!tracker) throw new Error('Safepay session did not return a tracker');
+
+        // Check if an external hosted checkout link was provided (production Safepay)
+        const checkoutUrl = data.data?.checkoutUrl;
+        if (checkoutUrl && checkoutUrl.includes('getsafepay.com')) {
+          window.location.href = checkoutUrl;
+          return;
+        }
+
+        navigate(`/payment/safepay?tracker=${encodeURIComponent(tracker)}`);
+        return;
+      }
+
+      // Cash on Delivery (COD)
       const payload = {
-        userId: user?.id || 'guest',
-        customerName: formData.customerName,
+        name: formData.customerName,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
         city: formData.city,
-        paymentMethod: formData.paymentMethod,
-        items: cartItems.map(item => ({
-          productId: item.productId,
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity,
-          price: item.finalPrice,
-          total: item.finalPrice * item.quantity,
-          selectedColor: item.selectedColor,
-          image: item.image
-        })),
-        subtotal,
-        shipping,
-        grandTotal
+        payment_method: 'cod',
+        items: cartItems,
+        grandTotal: grandTotal,
+        subtotal: subtotal,
+        shipping: shipping,
       };
 
-      const res = await fetch('/api/orders', {
+      const res = await fetch('/api/orders/place', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to place order');
 
+      const order = data.data || data.order || {
+        id: data.orderId || data.id,
+        trackingNumber: data.trackingNumber || `INTRA-${Date.now()}`,
+        customerName: formData.customerName,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        paymentMethod: 'Cash on Delivery',
+        grandTotal: grandTotal,
+        orders: data.orders || []
+      };
+
       clearCart();
-      navigate('/order-success', { state: { order: data.data } });
+      navigate('/order-success', { state: { order } });
     } catch (err) {
       setError(err.message);
       setIsSubmitting(false);
@@ -122,7 +197,7 @@ export default function Checkout() {
                   <input
                     type="tel"
                     required
-                    placeholder="e.g. 0300 1234567"
+                    placeholder="e.g. 0347 9814741"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full bg-[#faf8f5] text-xs p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#4b2c2c]"
@@ -135,7 +210,7 @@ export default function Checkout() {
                   <label className="text-xs font-bold text-gray-700 block mb-1">Email Address</label>
                   <input
                     type="email"
-                    placeholder="e.g. ahmed@gmail.com"
+                    placeholder="e.g. info.muzseo@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full bg-[#faf8f5] text-xs p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#4b2c2c]"
@@ -161,7 +236,7 @@ export default function Checkout() {
                 <textarea
                   rows="2"
                   required
-                  placeholder="e.g. House 42, Street 8, Block Y, Phase 3, DHA"
+                  placeholder="e.g. House 42, Block G, Phase 2, Johar Town, Lahore"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full bg-[#faf8f5] text-xs p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#4b2c2c]"
@@ -178,9 +253,9 @@ export default function Checkout() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label
-                  className={`p-4 rounded-2xl border-2 flex items-center gap-3 cursor-pointer transition-all ${
+                  className={`p-4 rounded-2xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
                     formData.paymentMethod === 'Cash on Delivery'
-                      ? 'border-[#4b2c2c] bg-[#faf3ed]'
+                      ? 'border-[#4b2c2c] bg-[#faf3ed] shadow-xs'
                       : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
                 >
@@ -190,38 +265,44 @@ export default function Checkout() {
                     value="Cash on Delivery"
                     checked={formData.paymentMethod === 'Cash on Delivery'}
                     onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    className="accent-[#4b2c2c]"
+                    className="accent-[#4b2c2c] mt-1"
                   />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="w-4 h-4 text-[#4b2c2c]" />
-                      <span className="text-xs font-bold text-[#2c1a1a]">Cash on Delivery (COD)</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Banknote className="w-4 h-4 text-[#4b2c2c]" />
+                        <span className="text-xs font-bold text-[#2c1a1a]">Cash on Delivery</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">COD</span>
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Pay in cash when delivery rider arrives</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Pay with physical cash when rider delivers to your doorstep</p>
                   </div>
                 </label>
 
                 <label
-                  className={`p-4 rounded-2xl border-2 flex items-center gap-3 cursor-pointer transition-all ${
-                    formData.paymentMethod === 'Card'
-                      ? 'border-[#4b2c2c] bg-[#faf3ed]'
+                  className={`p-4 rounded-2xl border-2 flex items-start gap-3 cursor-pointer transition-all ${
+                    formData.paymentMethod === 'Safepay'
+                      ? 'border-[#4b2c2c] bg-[#faf3ed] shadow-xs'
                       : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
                 >
                   <input
                     type="radio"
                     name="paymentMethod"
-                    value="Card"
-                    checked={formData.paymentMethod === 'Card'}
+                    value="Safepay"
+                    checked={formData.paymentMethod === 'Safepay'}
                     onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    className="accent-[#4b2c2c]"
+                    className="accent-[#4b2c2c] mt-1"
                   />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-[#4b2c2c]" />
-                      <span className="text-xs font-bold text-[#2c1a1a]">Debit / Credit Card</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-[#4b2c2c]" />
+                        <span className="text-xs font-bold text-[#2c1a1a]">Safepay Payment</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Online</span>
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Instant online payment via Safepay</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Visa, Mastercard, PayPak, or Mobile Wallet through Safepay</p>
                   </div>
                 </label>
               </div>
@@ -271,7 +352,11 @@ export default function Checkout() {
               className="w-full bg-[#4b2c2c] hover:bg-[#3a2020] disabled:bg-gray-400 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 mt-4 active:scale-95"
             >
               <Lock className="w-3.5 h-3.5 text-[#d4a56a]" />
-              <span>{isSubmitting ? 'Placing Order...' : 'Place Confirmed Order'}</span>
+              <span>
+                {isSubmitting
+                  ? (formData.paymentMethod === 'Safepay' ? 'Connecting to Safepay...' : 'Placing COD Order...')
+                  : (formData.paymentMethod === 'Safepay' ? `Proceed to Safepay (Rs. ${grandTotal.toLocaleString()})` : `Place COD Order (Rs. ${grandTotal.toLocaleString()})`)}
+              </span>
             </button>
 
             <div className="pt-2 text-[10px] text-gray-400 text-center flex items-center justify-center gap-1">

@@ -1,8 +1,10 @@
 import express from 'express';
 import multer from 'multer';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from '../config/db.js';
+import jwt from 'jsonwebtoken';
 import { authenticateToken, requireAdmin, requireSeller } from '../middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -11,9 +13,12 @@ const __dirname  = path.dirname(__filename);
 const router = express.Router();
 
 // Multer — file upload setup
+const uploadDir = path.resolve(__dirname, '../../client/public/uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.resolve(__dirname, '../../htdocs/uploads/'));
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -88,10 +93,27 @@ router.get('/:id', async (req, res) => {
     const data = { ...p, finalPrice: p.price - (p.price * (p.discount || 0) / 100) };
 
     // Get reviews
-    const [reviews] = await pool.query(
-      'SELECT * FROM feedback WHERE product_id = ? ORDER BY created_at DESC',
-      [req.params.id]
-    );
+    let reviews = [];
+    try {
+      const [reviewRows] = await pool.query(
+        `SELECT pr.id, pr.rating, pr.feedback as comment, pr.created_at,
+                COALESCE(u.name, 'Verified Customer') as userName
+         FROM product_reviews pr
+         LEFT JOIN users u ON pr.user_id = u.id
+         WHERE pr.product_id = ?
+         ORDER BY pr.created_at DESC`,
+        [req.params.id]
+      );
+      reviews = reviewRows.map(r => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        userName: r.userName,
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recent'
+      }));
+    } catch (e) {
+      reviews = [];
+    }
 
     res.json({ success: true, data: { ...data, reviews } });
   } catch (err) {
@@ -182,20 +204,81 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 /* ─────────────────────────────────────────
+   GET PRODUCT REVIEWS
+───────────────────────────────────────── */
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const [reviewRows] = await pool.query(
+      `SELECT pr.id, pr.rating, pr.feedback, pr.created_at,
+              COALESCE(u.name, 'Verified Customer') as userName
+       FROM product_reviews pr
+       LEFT JOIN users u ON pr.user_id = u.id
+       WHERE pr.product_id = ?
+       ORDER BY pr.created_at DESC`,
+      [req.params.id]
+    );
+    const reviews = reviewRows.map(r => {
+      const match = r.feedback ? r.feedback.match(/^\[By (.+?)\]:\s*([\s\S]*)$/) : null;
+      const reviewerName = match ? match[1] : (r.userName || 'Verified Customer');
+      const cleanComment = match ? match[2] : (r.feedback || '');
+      return {
+        id: r.id,
+        rating: r.rating,
+        comment: cleanComment,
+        userName: reviewerName,
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recent'
+      };
+    });
+    res.json({ success: true, count: reviews.length, data: reviews });
+  } catch (err) {
+    console.error('[GET /products/:id/reviews]', err);
+    res.json({ success: true, count: 0, data: [] });
+  }
+});
+
+/* ─────────────────────────────────────────
    ADD REVIEW
 ───────────────────────────────────────── */
-router.post('/:id/reviews', authenticateToken, async (req, res) => {
-  const { rating, comment } = req.body;
+router.post('/:id/reviews', async (req, res) => {
+  const { rating, comment, userName } = req.body;
   if (!comment || !rating) {
     return res.status(400).json({ error: 'Rating and comment are required' });
   }
 
   try {
-    await pool.query(
-      'INSERT INTO feedback (product_id, user_id, user_name, rating, comment, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-      [req.params.id, req.user.id, req.user.name, parseInt(rating), comment]
+    let userId = 0;
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'intradecor_jwt_secret_key_2026');
+        userId = decoded.id || 0;
+      } catch (e) {}
+    }
+
+    if (!userId || userId === 0) {
+      const [u] = await pool.query('SELECT id FROM users LIMIT 1');
+      userId = u.length > 0 ? u[0].id : 1;
+    }
+
+    const reviewerName = userName ? userName.trim() : 'Verified Customer';
+    const storedFeedback = `[By ${reviewerName}]: ${comment.trim()}`;
+
+    const [result] = await pool.query(
+      'INSERT INTO product_reviews (product_id, user_id, rating, feedback, created_at) VALUES (?, ?, ?, ?, NOW())',
+      [req.params.id, userId, parseInt(rating), storedFeedback]
     );
-    res.status(201).json({ success: true, message: 'Review submitted successfully' });
+
+    const newRev = {
+      id: result.insertId,
+      product_id: req.params.id,
+      userName: reviewerName,
+      rating: parseInt(rating),
+      comment: comment.trim(),
+      date: 'Just now'
+    };
+
+    res.status(201).json({ success: true, message: 'Review submitted successfully', data: newRev });
   } catch (err) {
     console.error('[POST /products/:id/reviews]', err);
     res.status(500).json({ error: 'Server error submitting review' });

@@ -20,6 +20,7 @@ import Services from './pages/Services';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
+import PaymentSafepay from './pages/PaymentSafepay';
 import OrderSuccess from './pages/OrderSuccess';
 import TrackOrder from './pages/TrackOrder';
 import Login from './pages/Login';
@@ -66,6 +67,7 @@ function MainLayout() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/payment/safepay" element={<PaymentSafepay />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/track-order" element={<TrackOrder />} />
           <Route path="/login" element={<Login />} />
@@ -78,7 +80,7 @@ function MainLayout() {
       <Footer />
 
       {/* Floating AI Consultant Assistant */}
-      <AIConsultantModal />
+      <AIConsultantModal onOpenEstimator={() => setIsEstimatorOpen(true)} />
 
       {/* Whole-House Project Cost Estimator Modal */}
       <HouseEstimatorModal
